@@ -12,9 +12,11 @@
   },
   "author": "Kairat Bayer",
   "license": "UNLICENSED",
-
   "bugs": {
     "url": "https://github.com/kbaitubayev/fragments/issues"
   },
-  "homepage": "https://github.com/kbaitubayev/fragments#readme"
+  "homepage": "https://github.com/kbaitubayev/fragments#readme",
+  "devDependencies": {
+    "prettier": "2.8.3"
+  }
 }
