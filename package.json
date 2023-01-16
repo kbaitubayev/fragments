@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "description": "CCP555 fragments back-end API",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --config .eslintrc.js src/**"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,8 @@
   },
   "homepage": "https://github.com/kbaitubayev/fragments#readme",
   "devDependencies": {
+    "eslint": "^8.32.0",
+    "eslint-plugin-react": "^7.32.0",
     "prettier": "2.8.3"
   }
 }
