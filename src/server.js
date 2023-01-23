@@ -9,8 +9,6 @@ const logger = require('./logger');
 // Get our express app instance
 const app = require('./app');
 
-const jq = require('node-jq');
-
 // Get the desired port from the process environment. Default to `8080`
 const port = parseInt(process.env.PORT || 8080, 10);
 
