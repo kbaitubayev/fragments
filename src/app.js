@@ -1,7 +1,7 @@
 // src/app.js
 // modifications to src/app.js
 const passport = require('passport');
-const authenticate = require('./authentication');
+const authenticate = require('../src/authorization/');
 
 const express = require('express');
 const cors = require('cors');
