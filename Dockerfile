@@ -35,6 +35,9 @@ RUN npm install
 # Copy src/
 COPY ./src ./src
 
+
+COPY ./env.jest ./env.jest
+
 # Copy our HTPASSWD file
 COPY ./tests/.htpasswd ./tests/.htpasswd
 
