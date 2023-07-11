@@ -10,4 +10,5 @@ npm run lint
 
 curl -s localhost:8080 | jq
 
+docker pull kbaitubayev/fragments:main
 docker run --rm --name fragments --env-file env.jest -e LOG_LEVEL=debug -p 8080:8080 kbaitubayev/fragments:main
