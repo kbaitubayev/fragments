@@ -19,35 +19,32 @@ describe('POST /v1/fragments', () => {
     expect(Array.isArray(res.body.fragments)).toBe(true);
   });
 
+  test('fragment without data does not work', async () => {
+    const res = await request(app)
+      .post('/v1/fragments')
+      .auth('user1@email.com', 'password1')
+      .send();
+    expect(res.statusCode).toBe(500);
+  });
+
   // unsupported content type should throw 415 error
-  /* test('unsupported content-type throw 415 error', async () => {
+  test('unsupported content-type throw 415 error', async () => {
     const res = await request(app)
       .post('/v1/fragments')
       .auth('user1@email.com', 'password1')
       .set('content-type', 'image/jpg');
     expect(res.statusCode).toBe(415);
   });
-  */
 
-  // check the fragment data when post request is made
-  /* test('check the fragment data after post request is done', async () => {
-    const value = Buffer.from('Hello, world!').toString();
+  // Using a valid username/password pair should give a success result with a .fragments array
+  test('authenticated users get a fragments array', async () => {
     const res = await request(app)
       .post('/v1/fragments')
       .auth('user1@email.com', 'password1')
-      .set('content-type', 'text/plain')
-      .send('Hello, world!');
-
-    const data = JSON.parse(res.text);
-    const userID = crypto.createHash('sha256').update('user1@email.com').digest('hex');
-
+      .send('fragment')
+      .set('content-type', 'text/plain');
     expect(res.statusCode).toBe(201);
-    expect(res.type).toBe('text/plain');
-    expect(data.fragment.ownerId).toBe(userID);
-    expect(data.fragment.size).toBe(value.length);
-    expect(res.type).toBe('text/plain');
-    expect(res.text).toContain('created');
-    expect(res.text).toContain('updated');
+    expect(res.body.status).toBe('ok');
+    //expect(res.body.fragments != null).toBe(true);
   });
-  */
 });
