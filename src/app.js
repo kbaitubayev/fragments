@@ -1,13 +1,14 @@
 // src/app.js
 // modifications to src/app.js
-const passport = require('passport');
-const authenticate = require('../src/authorization/');
-const { createErrorResponse } = require('../src/response');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const passport = require('passport');
 
+const authenticate = require('../src/authorization/');
+const { createErrorResponse } = require('../src/response');
 // version and author from our package.json file
 
 const logger = require('./logger');
@@ -18,13 +19,6 @@ const pino = require('pino-http')({
 
 // Create an express app instance we can use to attach middleware and HTTP routes
 const app = express();
-
-// Use gzip/deflate compression middleware
-app.use(compression());
-
-// Set up our passport authentication middleware
-passport.use(authenticate.strategy());
-app.use(passport.initialize());
 
 // Use logging middleware
 app.use(pino);
@@ -38,22 +32,9 @@ app.use(cors());
 // Use gzip/deflate compression middleware
 app.use(compression());
 
-// Define a simple health check route. If the server is running
-// we'll respond with a 200 OK.  If not, the server isn't healthy.
-// app.get('/', (req, res) => {
-//   // Clients shouldn't cache this response (always request it fresh)
-//   // See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#controlling_caching
-//   res.setHeader('Cache-Control', 'no-cache');
-
-//   // Send a 200 'OK' response with info about our repo
-//   res.status(200).json({
-//     status: 'ok',
-//     author,
-//     // TODO: change this to use your GitHub username
-//     githubUrl: 'https://github.com/kbaitubayev/fragments',
-//     version,
-//   });
-// });
+// Set up our passport authentication middleware
+passport.use(authenticate.strategy());
+app.use(passport.initialize());
 
 // modifications to src/app.js
 
@@ -64,18 +45,31 @@ app.use('/', require('./routes'));
 
 // Add 404 middleware to handle any requests for resources that can't be found
 app.use((req, res) => {
-  res.status(404).json(createErrorResponse(404, 'not found'));
+  res.status(404).json({
+    status: 'error',
+    error: {
+      message: 'not found',
+      code: 404,
+    },
+  });
 });
 
 // Add error-handling middleware to deal with anything else
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  // We may already have an error response we can use, but if not, use a generic
-  // 500 server error and message.
-  const status = err.status || 500;
-  const message = err.message || 'unable to process request';
+  let status;
 
-  // If this is a server error, log something so we can see what's going on.
+  const message = err.message || 'unable to process request';
+  if (message === 'Invalid type') {
+    status = 415;
+  } else if (message === 'Invalid size value' || message === 'Missing ownerId or type') {
+    status = 400;
+  } else if (
+    message === 'Error: Fragment does not exist.' ||
+    message === 'unable to read fragment data'
+  ) {
+    status = 404;
+  } else status = err.status || 500;
   if (status > 499) {
     logger.error({ err }, `Error processing request`);
   }

@@ -1,20 +1,21 @@
 // src/routes/index.js
 
 const express = require('express');
-
-const { createSuccessResponse } = require('../../src/response');
+//const logger = require('../logger');
 
 // version and author from package.json
 const { version, author } = require('../../package.json');
+
+// Our authentication middleware
+const { authenticate } = require('../authorization');
+
+const { createSuccessResponse } = require('../../src/response');
 
 // Create a router that we can use to mount our API
 const router = express.Router();
 
 const contentType = require('content-type');
 const { Fragment } = require('../model/fragment');
-
-// Our authentication middleware
-const { authenticate } = require('../authorization/index');
 /**
  * Expose all of our API routes on /v1/* to include an API version.
  * Protect them all so you have to be authenticated in order to access.
