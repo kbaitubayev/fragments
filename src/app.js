@@ -20,8 +20,12 @@ const pino = require('pino-http')({
 // Create an express app instance we can use to attach middleware and HTTP routes
 const app = express();
 
-// Use CORS middleware so we can make requests across origins
-app.use(cors());
+const corsOptions = {
+  origin: '*', // Replace '*' with the allowed origin(s) of your choice
+};
+
+// Use CORS middleware with options
+app.use(cors(corsOptions));
 
 // Use logging middleware
 app.use(pino);
