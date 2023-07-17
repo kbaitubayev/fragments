@@ -12,7 +12,7 @@ const { Fragment } = require('../../model/fragment');
 const router = express.Router();
 
 const { getRoute, getById, getInfo } = require('./get');
-const route = '/v1/fragments';
+const route = '/fragments';
 
 // GET routes
 router.get(route, getRoute);
