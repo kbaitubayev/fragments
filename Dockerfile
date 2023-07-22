@@ -38,7 +38,7 @@ COPY ./src ./src
 
 COPY ./env.jest ./env.jest
 
-COPY ./.env ./.env
+#COPY ./.env ./.env
 
 
 # Copy our HTPASSWD file
