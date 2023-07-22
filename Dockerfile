@@ -38,6 +38,9 @@ COPY ./src ./src
 
 COPY ./env.jest ./env.jest
 
+COPY ./.env ./.env
+
+
 # Copy our HTPASSWD file
 COPY ./tests/.htpasswd ./tests/.htpasswd
 
