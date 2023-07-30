@@ -6,6 +6,8 @@ const express = require('express');
 // version and author from package.json
 const { version, author } = require('../../package.json');
 
+const { hostname } = require('os');
+
 // Our authentication middleware
 const { authenticate } = require('../authorization');
 
@@ -35,6 +37,8 @@ router.get('/', (req, res) => {
       author,
       githubUrl: 'https://github.com/kbaitubayev/fragments',
       version,
+      // Include the hostname in the response
+      hostname: hostname(),
     })
   );
 });
