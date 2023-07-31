@@ -1,33 +1,45 @@
+// src/routes/api/get.js
+
+// Use crypto.randomUUID() to create unique IDs, see:
+// https://nodejs.org/api/crypto.html#cryptorandomuuidoptions
+const crypto = require('crypto');
 const { Fragment } = require('../../model/fragment');
-const { createSuccessResponse } = require('../../../src/response');
-const logger = require('../../logger');
-//const contentType = require('content-type');
 
-module.exports = async (req, res, next) => {
-  const data = req.body;
-  const user = req.user;
-  const type = req.headers['content-type'];
+const createSuccessResponse = require('../../response').createSuccessResponse;
+const createErrorResponse = require('../../response').createErrorResponse;
 
-  logger.debug({ user, type }, 'POST request:');
+const generateUUID = () => {
+  return crypto.randomUUID().toString('hex');
+};
 
-  try {
-    if (!Fragment.isSupportedType(type)) {
-      throw new Error('Invalid type');
-    }
+module.exports = async (req, res) => {
+  if (Buffer.isBuffer(req.body) && Fragment.isSupportedType(req.headers['content-type'])) {
+    const id = generateUUID();
+    const location = req.protocol + '://' + req.hostname + ':8080/v1' + req.url + '/' + id;
+    res.set({ Location: location });
 
-    const size = Buffer.byteLength(data);
-    const fragment = new Fragment({ ownerId: user, type: type, size: size });
-    await fragment.save();
-    await fragment.setData(data);
-    const id = fragment.id;
-    logger.debug(id, 'POST fragment id');
+    const newFragment = new Fragment({
+      id: id,
+      ownerId: crypto.createHash('sha256').update(req.user).digest('hex'),
+      created: new Date().toString(),
+      update: new Date().toString(),
+      type: req.headers['content-type'],
+      size: Number(req.headers['content-length']),
+    });
+    await newFragment.setData(req.body);
 
-    const location = `${process.env.API_URL}/v1/fragments/${id}`;
-
-    res.location(location);
-    logger.debug({ location }, 'POST location');
-    res.status(201).json(createSuccessResponse({ fragment }));
-  } catch (err) {
-    next(err);
+    createSuccessResponse(
+      res.status(201).json({
+        status: 'ok',
+        fragments: newFragment,
+      })
+    );
+  } else {
+    createErrorResponse(
+      res.status(415).json({
+        status: 'error',
+        message: 'Invalid file type',
+      })
+    );
   }
 };
