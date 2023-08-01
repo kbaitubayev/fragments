@@ -61,6 +61,7 @@ jobs:
           # if we have to test or debug something. Second, we'll also replace the
           # `latest` tag, since this is our most up-to-date version.
           VERSION_TAG: ${{ github.ref_name }}
+          AWS_S3_BUCKET_NAME: kbaitubayev-fragments
         uses: docker/build-push-action@v4
         with:
           push: true
