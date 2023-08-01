@@ -61,9 +61,28 @@ jobs:
           # if we have to test or debug something. Second, we'll also replace the
           # `latest` tag, since this is our most up-to-date version.
           VERSION_TAG: ${{ github.ref_name }}
-          AWS_S3_BUCKET_NAME: kbaitubayev-fragments
         uses: docker/build-push-action@v4
         with:
           push: true
           # Use the git tag version and `latest`
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${{ env.VERSION_TAG }}, ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: update-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO: fragments
+          VERSION_TAG: ${{ github.ref_name }}
+        with:
+          task-definition: fragments-definition.json
+          container-name: fragments
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${{ env.VERSION_TAG }}
+          environment-variables: |
+            LOG_LEVEL=info
+            NODE_ENV=production
+            AWS_COGNITO_CLIENT_ID=${{ secrets.AWS_COGNITO_CLIENT_ID }}
+            AWS_COGNITO_POOL_ID=${{ secrets.AWS_COGNITO_POOL_ID }}
+            AWS_REGION=us-east-1
+            AWS_S3_BUCKET_NAME: kbaitubayev-fragments
+            DOCKERHUB_TOKEN:${{ secrets.DOCKERHUB_TOKEN }}
+            DOCKERHUB_USERNAME:${{ secrets.DOCKERHUB_USERNAME }}
