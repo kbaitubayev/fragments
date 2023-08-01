@@ -31,7 +31,13 @@ app.use(cors(corsOptions));
 app.use(pino);
 
 // Use security middleware
-app.use(helmet());
+//app.use(helmet());
+// Use helmet middleware with custom Referrer Policy
+app.use(
+  helmet({
+    referrerPolicy: { policy: 'no-referrer' },
+  })
+);
 
 // Use gzip/deflate compression middleware
 app.use(compression());
