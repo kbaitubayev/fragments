@@ -264,7 +264,7 @@ async function deleteFragment(ownerId, id) {
     const { Bucket, Key } = params;
     logger.warn({ err, params }, 'error deleting fragment from DynamoDB');
     // If anything goes wrong, log enough info that we can debug
-    logger.error({ err, Bucket, Key }, 'Error deleteing fragment data to S3');
+    logger.error({ err, Bucket, Key }, 'Error deleting fragment data to S3');
     throw new Error('unable to deleting fragment data');
   }
 }

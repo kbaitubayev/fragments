@@ -16,6 +16,7 @@ function readFragment(ownerId, id) {
 
 // Write a fragment's data buffer to memory db. Returns a Promise
 function writeFragmentData(ownerId, id, buffer) {
+  console.log('WRITE IN OFFLINE');
   return data.put(ownerId, id, buffer);
 }
 

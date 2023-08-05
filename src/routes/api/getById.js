@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
           }
         }
 
-        if (fragment.mimeType.includes('json')) {
+        if (fragment.mimeType && fragment.mimeType.includes('json')) {
           dataResult = await fragment.getData();
         }
       } else {
