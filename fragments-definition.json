@@ -128,11 +128,12 @@
   ],
   "pidMode": null,
   "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "runtimePlatform": null,
   "cpu": "256",
-  "runtimePlatform": {
-    "operatingSystemFamily": "LINUX"
-  },
-  "registeredAt": "2023-08-04T02:31:15.391Z",
-  "registeredBy": "arn:aws:sts::295142123803:assumed-role/voclabs/user2370054=Bayer,_Kairat",
-  "tags": []
+  "revision": 2,
+  "status": "ACTIVE",
+  "inferenceAccelerators": null,
+  "proxyConfiguration": null,
+  "volumes": []
 }
