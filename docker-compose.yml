@@ -20,7 +20,7 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       # Use the LOG_LEVEL set in the host environment, or default to info
       - LOG_LEVEL=${LOG_LEVEL:-debug}
-      # trying to place it in secrets
+      # trying to place it in secrets...
       #- AWS_REGION=us-east-1
       # Use the LocalStack endpoint vs. AWS for S3 AWS SDK clients.
       # NOTE: we use Docker's internal network to the localstack container
