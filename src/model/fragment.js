@@ -3,6 +3,12 @@
 const { randomUUID } = require('crypto');
 // Use https://www.npmjs.com/package/content-type to create/parse Content-Type headers
 const contentType = require('content-type');
+const md = require('markdown-it')({
+  html: true,
+});
+const sharp = require('sharp');
+const mime = require('mime-types');
+const logger = require('../logger');
 
 // Functions for working with fragment metadata/data using our DB
 const {
@@ -16,6 +22,26 @@ const {
 
 class Fragment {
   constructor({ id, ownerId, created, updated, type, size = 0 }) {
+    if (!type) throw new Error('type is required');
+    if (!Fragment.isSupportedType(type)) {
+      throw new Error('invalid type');
+    }
+    if (!ownerId) throw new Error('ownerId is required');
+    if (size < 0) throw new Error('size must be >= 0');
+    if (typeof size !== 'number') throw new Error('size must be a number');
+
+    this.id = id || randomUUID();
+    this.ownerId = ownerId;
+    this.created = created || created.toISOString();
+    this.updated = updated || updated.toISOString();
+    this.type = type;
+    this.size = size || 0;
+
+    logger.info(`Created new fragment: ${this.id}`);
+    logger.debug(`Fragment details: ${JSON.stringify(this)}`);
+  }
+
+  /* {
     if (
       (ownerId &&
         type &&
@@ -47,7 +73,7 @@ class Fragment {
         throw new Error('Fragment type or size is wrong');
       }
     }
-  }
+  } */
 
   /**
    * Get all fragments (id or full) for the given user
@@ -97,7 +123,12 @@ class Fragment {
    * @returns Promise<Buffer>
    */
   getData() {
-    return readFragmentData(this.ownerId, this.id);
+    try {
+      logger.info(`getData called for fragment: ${this.id}`);
+      return readFragmentData(this.ownerId, this.id);
+    } catch (err) {
+      throw new Error('unable to read fragment data');
+    }
   }
 
   /**
@@ -106,13 +137,11 @@ class Fragment {
    * @returns Promise<void>
    */
   async setData(data) {
-    if (Buffer.isBuffer(data)) {
-      this.updated = new Date().toString();
-      this.size = Buffer.byteLength(data);
-      return writeFragmentData(this.ownerId, this.id, data);
-    } else {
-      throw new Error(`Data is Empty!`);
-    }
+    if (!Buffer.isBuffer(data)) throw new Error('data must be a Buffer');
+    this.size = data.length;
+    await this.save();
+    logger.info(`Data saved for fragment: ${this.id}`);
+    return await writeFragmentData(this.ownerId, this.id, data);
   }
 
   /**
@@ -138,12 +167,19 @@ class Fragment {
    * @returns {Array<string>} list of supported mime types
    */
   get formats() {
-    let formats = [];
-
-    if (this.type.startsWith('text/plain')) {
-      formats = ['text/plain'];
-    }
-    return formats;
+    if (this.mimeType === 'text/plain') return ['text/plain'];
+    else if (this.mimeType === 'text/markdown') return ['text/markdown', 'text/html', 'text/plain'];
+    else if (this.mimeType === 'text/html') return ['text/html', 'text/plain'];
+    else if (this.mimeType === 'application/json') return ['application/json', 'text/plain'];
+    else if (this.mimeType === 'image/png')
+      return ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    else if (this.mimeType === 'image/jpeg')
+      return ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    else if (this.mimeType === 'image/gif')
+      return ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
+    else if (this.mimeType === 'image/webp')
+      return ['image/webp', 'image/png', 'image/jpeg', 'image/gif'];
+    else return [];
   }
 
   /**
@@ -164,6 +200,36 @@ class Fragment {
     ];
 
     return validType.includes(value);
+  }
+
+  async convertTo(data, extension) {
+    let type = mime.lookup(extension);
+    if (!type) throw new Error('invalid extension');
+    const formats = this.formats;
+    if (!formats.includes(type)) throw new Error('unsupported format');
+    var convertedData;
+    if (type === this.mimeType) return data;
+    if (this.mimeType == 'text/markdown' && type == 'text/html') {
+      convertedData = md.render(data.toString());
+    } else if (this.mimeType == 'text/markdown' && type == 'text/plain') {
+      convertedData = data.toString();
+    } else if (this.mimeType == 'text/html' && type == 'text/plain') {
+      convertedData = data.toString().replace(/(<([^>]+)>)/gi, '');
+    } else if (this.mimeType == 'application/json' && type == 'text/plain') {
+      const obj = JSON.parse(data.toString());
+      const entries = Object.entries(obj);
+      const result = entries.map(([key, value]) => `${key}: ${value}`).join(', ');
+      convertedData = result;
+    } else if (type === 'image/jpeg') {
+      convertedData = await sharp(data).jpeg().toBuffer();
+    } else if (type === 'image/png') {
+      convertedData = await sharp(data).png().toBuffer();
+    } else if (type === 'image/webp') {
+      convertedData = await sharp(data).webp().toBuffer();
+    } else if (type === 'image/gif') {
+      convertedData = await sharp(data).gif().toBuffer();
+    }
+    return convertedData;
   }
 }
 

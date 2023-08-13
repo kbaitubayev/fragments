@@ -26,6 +26,7 @@ module.exports = async (req, res) => {
       type: req.headers['content-type'],
       size: Number(req.headers['content-length']),
     });
+    await newFragment.save();
     await newFragment.setData(req.body);
 
     createSuccessResponse(
