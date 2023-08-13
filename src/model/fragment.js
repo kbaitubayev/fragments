@@ -32,8 +32,8 @@ class Fragment {
 
     this.id = id || randomUUID();
     this.ownerId = ownerId;
-    this.created = created || created.toISOString();
-    this.updated = updated || updated.toISOString();
+    this.created = created || new Date().toString();
+    this.updated = updated || new Date().toString();
     this.type = type;
     this.size = size || 0;
 
