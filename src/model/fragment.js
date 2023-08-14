@@ -3,12 +3,8 @@
 const { randomUUID } = require('crypto');
 // Use https://www.npmjs.com/package/content-type to create/parse Content-Type headers
 const contentType = require('content-type');
-const md = require('markdown-it')({
-  html: true,
-});
+var md = require('markdown-it')();
 const sharp = require('sharp');
-const mime = require('mime-types');
-const logger = require('../logger');
 
 // Functions for working with fragment metadata/data using our DB
 const {
@@ -19,61 +15,32 @@ const {
   listFragments,
   deleteFragment,
 } = require('./data');
+const logger = require('../logger');
 
 class Fragment {
-  constructor({ id, ownerId, created, updated, type, size = 0 }) {
-    if (!type) throw new Error('type is required');
+  constructor({ id = randomUUID(), ownerId, created, updated, type, size = 0 }) {
+    if (!ownerId) {
+      logger.debug(ownerId, type);
+      throw new Error('ownerId is required');
+    }
+    if (!type) {
+      logger.debug(ownerId, type);
+      throw new Error('type is required');
+    }
+    if (isNaN(size) || typeof size !== 'number' || size < 0) {
+      logger.debug(size);
+      throw new Error('size must be number');
+    }
     if (!Fragment.isSupportedType(type)) {
-      throw new Error('invalid type');
+      throw new Error('Type is not supported');
     }
-    if (!ownerId) throw new Error('ownerId is required');
-    if (size < 0) throw new Error('size must be >= 0');
-    if (typeof size !== 'number') throw new Error('size must be a number');
-
-    this.id = id || randomUUID();
+    this.id = id;
     this.ownerId = ownerId;
-    this.created = created || new Date().toString();
-    this.updated = updated || new Date().toString();
+    this.created = created || new Date().toISOString();
+    this.updated = updated || new Date().toISOString();
     this.type = type;
-    this.size = size || 0;
-
-    logger.info(`Created new fragment: ${this.id}`);
-    logger.debug(`Fragment details: ${JSON.stringify(this)}`);
+    this.size = size;
   }
-
-  /* {
-    if (
-      (ownerId &&
-        type &&
-        Fragment.isSupportedType(type) &&
-        typeof size === 'number' &&
-        size >= 0) ||
-      /;\s*charset=/.test(type)
-    ) {
-      if (!size) {
-        this.size = 0;
-      } else {
-        this.size = size;
-      }
-      this.id = id || randomUUID();
-      this.ownerId = ownerId;
-      // this.created = created || JSON.stringify(new Date());
-      this.created = created || new Date().toString();
-      // this.updated = updated || JSON.stringify(new Date());
-      this.update = updated || new Date().toString();
-      this.type = type;
-      this.save();
-    } else {
-      if (!ownerId) {
-        throw new Error(`Fragment missing ownerId not found!`);
-      }
-      if (!type) {
-        throw new Error(`Fragment missing type not found!`);
-      } else {
-        throw new Error('Fragment type or size is wrong');
-      }
-    }
-  } */
 
   /**
    * Get all fragments (id or full) for the given user
@@ -81,8 +48,20 @@ class Fragment {
    * @param {boolean} expand whether to expand ids to full fragments
    * @returns Promise<Array<Fragment>>
    */
+
+  // Goes to http://localhost:8080/v1/fragments
+  // Goes to http://localhost:8080/v1/fragments/?expand=1
+  // 1 is true and if empty, expand sets as false
   static async byUser(ownerId, expand = false) {
-    return listFragments(ownerId, expand);
+    try {
+      const fragment = await listFragments(ownerId, expand);
+      return fragment;
+    } catch (err) {
+      //here
+      logger.error({ err }, `Unable to get fragments by user`);
+      //console.error(err);
+      return [];
+    }
   }
 
   /**
@@ -92,30 +71,42 @@ class Fragment {
    * @returns Promise<Fragment>
    */
   static async byId(ownerId, id) {
-    const fragment = await readFragment(ownerId, id);
-    if (!fragment) {
-      throw new Error(`Fragment ${id} not found!`);
+    try {
+      const fragment = await readFragment(ownerId, id);
+      //console.log(fragment);
+      logger.debug({ fragment }, 'BYID'); //Fixed base on the A1 feedback
+      if (!fragment) {
+        throw new Error('fragment is not there');
+      }
+      return fragment;
+    } catch (err) {
+      // ??? An async function doesn't need you to add extra Promises around your return/throw statements.  It will happen automatically.
+      throw new Error('fragment could not find');
+      //return Promise.reject(new Error('fragment could not find'));
     }
-    return fragment;
   }
 
   /**
    * Delete the user's fragment data and metadata for the given id
    * @param {string} ownerId user's hashed email
    * @param {string} id fragment's id
-   * @returns Promise<void>
+   * @returns Promise
    */
-  static async delete(ownerId, id) {
+  static delete(ownerId, id) {
     return deleteFragment(ownerId, id);
   }
 
   /**
    * Saves the current fragment to the database
-   * @returns Promise<void>
+   * @returns Promise
    */
   save() {
-    this.updated = new Date().toString();
-    return writeFragment(this);
+    try {
+      this.updated = new Date().toISOString();
+      return writeFragment(this);
+    } catch (err) {
+      logger.error({ err }, `Unable to save fragment`);
+    }
   }
 
   /**
@@ -123,25 +114,33 @@ class Fragment {
    * @returns Promise<Buffer>
    */
   getData() {
+    logger.info('Inside Fragment->getData()');
     try {
-      logger.info(`getData called for fragment: ${this.id}`);
       return readFragmentData(this.ownerId, this.id);
     } catch (err) {
-      throw new Error('unable to read fragment data');
+      logger.error({ err }, `Unable to get fragment data`);
     }
   }
 
   /**
    * Set's the fragment's data in the database
    * @param {Buffer} data
-   * @returns Promise<void>
+   * @returns Promise
    */
   async setData(data) {
-    if (!Buffer.isBuffer(data)) throw new Error('data must be a Buffer');
-    this.size = data.length;
-    await this.save();
-    logger.info(`Data saved for fragment: ${this.id}`);
-    return await writeFragmentData(this.ownerId, this.id, data);
+    try {
+      if (data) {
+        //Fixed base on the A1 feedback
+        await this.save();
+        //this.updated = new Date().toISOString();
+        this.size = data.byteLength;
+        return await writeFragmentData(this.ownerId, this.id, data);
+      } else {
+        throw new Error('Data is empty');
+      }
+    } catch (err) {
+      return Promise.reject(new Error('Data is not in buffer'));
+    }
   }
 
   /**
@@ -167,19 +166,17 @@ class Fragment {
    * @returns {Array<string>} list of supported mime types
    */
   get formats() {
-    if (this.mimeType === 'text/plain') return ['text/plain'];
-    else if (this.mimeType === 'text/markdown') return ['text/markdown', 'text/html', 'text/plain'];
-    else if (this.mimeType === 'text/html') return ['text/html', 'text/plain'];
-    else if (this.mimeType === 'application/json') return ['application/json', 'text/plain'];
-    else if (this.mimeType === 'image/png')
-      return ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-    else if (this.mimeType === 'image/jpeg')
-      return ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    else if (this.mimeType === 'image/gif')
-      return ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
-    else if (this.mimeType === 'image/webp')
-      return ['image/webp', 'image/png', 'image/jpeg', 'image/gif'];
-    else return [];
+    return [
+      'text/plain',
+      'text/html',
+      'text/markdown',
+      'application/json',
+      'image/png',
+      'image/jpg',
+      'image/jpeg',
+      'image/gif',
+      'image/webp',
+    ];
   }
 
   /**
@@ -188,48 +185,38 @@ class Fragment {
    * @returns {boolean} true if we support this Content-Type (i.e., type/subtype)
    */
   static isSupportedType(value) {
-    let validType = [
-      'text/plain',
-      'text/plain; charset=utf-8',
-      'text/markdown',
-      'text/html',
-      'application/json',
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-    ];
-
-    return validType.includes(value);
+    if (
+      value.startsWith('text/') ||
+      value.startsWith('application/') ||
+      value.startsWith('image/')
+    ) {
+      return true;
+    }
+    return false;
   }
 
-  async convertTo(data, extension) {
-    let type = mime.lookup(extension);
-    if (!type) throw new Error('invalid extension');
-    const formats = this.formats;
-    if (!formats.includes(type)) throw new Error('unsupported format');
-    var convertedData;
-    if (type === this.mimeType) return data;
-    if (this.mimeType == 'text/markdown' && type == 'text/html') {
-      convertedData = md.render(data.toString());
-    } else if (this.mimeType == 'text/markdown' && type == 'text/plain') {
-      convertedData = data.toString();
-    } else if (this.mimeType == 'text/html' && type == 'text/plain') {
-      convertedData = data.toString().replace(/(<([^>]+)>)/gi, '');
-    } else if (this.mimeType == 'application/json' && type == 'text/plain') {
-      const obj = JSON.parse(data.toString());
-      const entries = Object.entries(obj);
-      const result = entries.map(([key, value]) => `${key}: ${value}`).join(', ');
-      convertedData = result;
-    } else if (type === 'image/jpeg') {
-      convertedData = await sharp(data).jpeg().toBuffer();
-    } else if (type === 'image/png') {
-      convertedData = await sharp(data).png().toBuffer();
-    } else if (type === 'image/webp') {
-      convertedData = await sharp(data).webp().toBuffer();
-    } else if (type === 'image/gif') {
-      convertedData = await sharp(data).gif().toBuffer();
+  static async convertFragment(data, ext) {
+    if (ext === '.png' || ext === '.jpeg' || ext === '.jpg') {
+      //logger.info({ ext }, 'THIS IS IMAGE');
+      //logger.info({ data }, 'buffer inside image');
+
+      //Removing the dot from ext ".png" => "png"
+      ext = ext.substring(1);
+      data = await sharp(data).toFormat(ext).toBuffer();
+      return data;
     }
-    return convertedData;
+
+    if (ext === '.md' || ext === '.html') {
+      logger.info({ ext }, 'IM A TEXT');
+      // Convert the data to string ("data": [35, 32, 104, 49])
+      // markdown-it works ONLY with string
+      let convert = md.render(data.toString('utf-8'));
+      // Convert to buffer again and send back to the get.js function
+      convert = Buffer.from(convert, 'utf-8');
+
+      //logger.info({ convert }, 'TEXT CONVERTED');
+      return convert;
+    }
   }
 }
 
