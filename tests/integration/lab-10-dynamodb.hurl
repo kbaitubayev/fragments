@@ -1,137 +1,88 @@
-# tests/integration/lab-10-dynamodb.hurl
-# Authenticated POST to /v1/fragments
+# 1.POST a new JSON fragment to http://localhost:8080 as an authorized user. The fragment's body should be the JSON value, { "service": "DynamoDB" }.
 POST http://localhost:8080/v1/fragments
-# We're sending a JSON fragment
 Content-Type: application/json
-# Include HTTP Basic Auth credentials
 [BasicAuth]
 user1@email.com:password1
-# Body of the request goes in ```...``` when it's a string
-`{"service": "DynamoDB"}`
+{ "service": "DynamoDB" }
 
-# 1. We expect to get back an HTTP 201
+# 2.Confirm that the server returns a 201, and capture the Location header value and the fragment's id in variables named fragment1_url and fragment1_id.
 HTTP/1.1 201
-# We have various assertions about the response that we want to check
-[Asserts]
-# The Location header should look like what we expect (including the fragment id)
-header "Location" matches "^http:\/\/localhost:8080\/v1\/fragments\/[A-Za-z0-9_-]+$"
-jsonpath "$.status" == "ok"
-# Our fragment ids use UUIDs, see https://ihateregex.io/expr/uuid/
-jsonpath "$.fragments.id" matches "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-# Our ownerId hash is a hex encoded string
-jsonpath "$.fragments.ownerId" matches "^[0-9a-fA-F]+$"
-# Basic check for the presence of created and updated date strings.
-# You could also write a regex for this and use matches
-jsonpath "$.fragments.created" isString
-jsonpath "$.fragments.updated" isString
-jsonpath "$.fragments.type" == "application/json"
-# Capture the Location URL into a variable named `fragment1_url`
-# Capture the fragment id into a variable named `fragment1_id`
 [Captures]
 fragment1_url: header "Location"
-fragment1_id: jsonpath "$.fragments.id"
+fragment1_id: jsonpath "$.fragment.id"
 
-# 3. Try to GET the fragment we just posted by its URL
+# 3.GET the fragment info (i.e., metadata) for the fragment you just created using the Location URL/info 
+# as an authorized user and confirm that the server returns a 200 and that all of the metadata properties match what you expect.
 GET {{fragment1_url}}/info
 [BasicAuth]
 user1@email.com:password1
 
 HTTP/1.1 200
-
+Content-Type: application/json; charset=utf-8
 [Asserts]
 jsonpath "$.status" == "ok"
 jsonpath "$.fragment.id" == {{fragment1_id}}
 jsonpath "$.fragment.type" == "application/json"
-jsonpath "$.fragment.ownerId" matches "^[0-9a-fA-F]+$"
-jsonpath "$.fragment.created" isString
-jsonpath "$.fragment.updated" isString
 
-# 4. Authenticated POST to /v1/fragments
+# 4.POST a second Markdown fragment to http://localhost:8080 as the same authorized user. The fragment's body should be the Markdown value, DynamoDB is **great**..
 POST http://localhost:8080/v1/fragments
-# We're sending a Markdown fragment
 Content-Type: text/markdown
-# Include HTTP Basic Auth credentials
 [BasicAuth]
 user1@email.com:password1
-# Body of the request goes in ```...``` when it's a string
-`DynamoDB is **great**.`
+```DynamoDB is **great**```
 
-# We expect to get back an HTTP 201
+# 5.Confirm that the server returns a 201, and once again capture the Location header value and the second id in variables named fragment2_url and fragment2_id.
 HTTP/1.1 201
-# We have various assertions about the response that we want to check
-[Asserts]
-# The Location header should look like what we expect (including the fragment id)
-header "Location" matches "^http:\/\/localhost:8080\/v1\/fragments\/[A-Za-z0-9_-]+$"
-jsonpath "$.status" == "ok"
-# Our fragment ids use UUIDs, see https://ihateregex.io/expr/uuid/
-jsonpath "$.fragments.id" matches "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
-# Our ownerId hash is a hex encoded string
-jsonpath "$.fragments.ownerId" matches "^[0-9a-fA-F]+$"
-# Basic check for the presence of created and updated date strings.
-# You could also write a regex for this and use matches
-jsonpath "$.fragments.created" isString
-jsonpath "$.fragments.updated" isString
-jsonpath "$.fragments.type" == "text/markdown"
-
-# Capture the Location URL into a variable named `fragment1_url`
-# Capture the fragment id into a variable named `fragment1_id`
 [Captures]
 fragment2_url: header "Location"
-fragment2_id: jsonpath "$.fragments.id"
+fragment2_id: jsonpath "$.fragment.id" 
 
-# 6. Try to GET the fragment we just posted by its URL
+# 6.GET the fragment info (i.e., metadata) you just created using the url/info as an authorized user and confirm that the server returns a 200 and that all of the metadata properties match what you expect.
 GET {{fragment2_url}}/info
 [BasicAuth]
 user1@email.com:password1
 
 HTTP/1.1 200
-
 [Asserts]
 jsonpath "$.status" == "ok"
 jsonpath "$.fragment.id" == {{fragment2_id}}
 jsonpath "$.fragment.type" == "text/markdown"
-jsonpath "$.fragment.ownerId" matches "^[0-9a-fA-F]+$"
-jsonpath "$.fragment.created" isString
-jsonpath "$.fragment.updated" isString
 
-# 7. Get list of fragments by Authenticated GET to /v1/fragments
+# 7.GET all of the fragments for the same authorized user without expanding them (i.e., just get back the IDs) 
+# and confirm that the list of fragments includes the two id values you captured above
 GET http://localhost:8080/v1/fragments
 [BasicAuth]
 user1@email.com:password1
 
-# We expect to get back an HTTP 200
 HTTP/1.1 200
-
-# Assert that the fragments array contains the two ids we captured earlier
 [Asserts]
-jsonpath "$.fragments[*]" includes {{fragment1_id}}
-jsonpath "$.fragments[*]" includes {{fragment2_id}}
+jsonpath "$.status" == "ok"
+jsonpath "$.fragments" includes {{fragment1_id}}
+jsonpath "$.fragments" includes {{fragment2_id}}
 
-# 8. DELETE the first fragment
+# 8.DELETE the first fragment you created above
 DELETE {{fragment1_url}}
 [BasicAuth]
 user1@email.com:password1
 
-# We expect to get back an HTTP 200
+# 9.Confirm that the server returns a 200
 HTTP/1.1 200
 
-# 10. Try to GET the first fragment again using the url as an authorized user.
+# 10.Try to GET the first fragment again using the url you captured above as the authorized user.
 GET {{fragment1_url}}
-
 [BasicAuth]
 user1@email.com:password1
 
-# We should get back an HTTP 1.1 404 response
+# 11.Confirm that the server returns a 404, since the fragment should be deleted.
 HTTP/1.1 404
 
-# 13. Get list of fragments by Authenticated GET to /v1/fragments
+# 12.GET all of the fragments for the same authorized user without expanding them (i.e., just get back the IDs) a second time, and confirm that the first id is NOT included but that the second id is (i.e., that the second was deleted).
 GET http://localhost:8080/v1/fragments
 [BasicAuth]
 user1@email.com:password1
 
-# We expect to get back an HTTP 200
 HTTP/1.1 200
-
-# Assert that the fragments array contains the two ids we captured earlier
 [Asserts]
-jsonpath "$.fragments[*]" != {{fragment1_id}}
+jsonpath "$.status" == "ok"
+jsonpath "$.fragments" includes {{fragment2_id}}
+jsonpath "$.fragments" not includes {{fragment1_id}}

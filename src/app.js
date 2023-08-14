@@ -1,7 +1,9 @@
-// src/app.js
-
-// // version and author from our package.json file
-// const { version, author } = require('../package.json');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const passport = require('passport');
+const { createErrorResponse } = require('./response');
 
 const logger = require('./logger');
 const pino = require('pino-http')({
@@ -9,19 +11,11 @@ const pino = require('pino-http')({
   logger,
 });
 
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-// modifications to src/app.js
-const passport = require('passport');
-const authenticate = require('./authorization/');
+//Step 61 define authentication
+const authentication = require('./authorization');
 
 // Create an express app instance we can use to attach middleware and HTTP routes
 const app = express();
-
-// Use gzip/deflate compression middleware
-app.use(compression());
 
 // Use logging middleware
 app.use(pino);
@@ -35,30 +29,18 @@ app.use(cors());
 // Use gzip/deflate compression middleware
 app.use(compression());
 
-// modifications to src/app.js
+// Set up passport authentication middleware
+// About Passport.js: https://www.kwbtblog.com/entry/2019/05/04/094338
+passport.use(authentication.strategy());
+app.use(passport.initialize());
 
-// Remove `app.get('/', (req, res) => {...});` and replace with:
-
-// Define our routes
+// Define the routes instead
 app.use('/', require('./routes'));
 
 // Add 404 middleware to handle any requests for resources that can't be found
 app.use((req, res) => {
-  res.status(404).json({
-    status: 'error',
-    error: {
-      message: 'not found',
-      code: 404,
-    },
-  });
+  res.status(404).json(createErrorResponse(404, 'not found'));
 });
-
-// Set up our passport authentication middleware
-passport.use(authenticate.strategy());
-app.use(passport.initialize());
-
-// Define our routes
-app.use('/', require('./routes'));
 
 // Add error-handling middleware to deal with anything else
 // eslint-disable-next-line no-unused-vars

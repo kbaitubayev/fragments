@@ -1,23 +1,24 @@
-// src/routes/index.js
-
+const { createSuccessResponse } = require('../response');
 const express = require('express');
+
+// Get the server's hostname and add it to the JSON we return for the health check
+// https://nodejs.org/api/os.html#oshostname
+const { hostname } = require('os');
+
 // version and author from package.json
 const { version, author } = require('../../package.json');
-
-const { hostname } = require('os');
 
 // Create a router that we can use to mount our API
 const router = express.Router();
 
-const authenticate = require('../authorization/').authenticate;
-// /**
-//  * Expose all of our API routes on /v1/* to include an API version.
-//  */
-// router.use(`/v1`, require('./api'));
+// Define authorization middleware for using authenticate middleware for all of the /v1/* routes
+const { authenticate } = require('../authorization');
+
 /**
  * Expose all of our API routes on /v1/* to include an API version.
  * Protect them all so you have to be authenticated in order to access.
  */
+// router.use(`/v1`, require('./api'));
 router.use(`/v1`, authenticate(), require('./api'));
 
 /**
@@ -28,15 +29,15 @@ router.get('/', (req, res) => {
   // Client's shouldn't cache this response (always request it fresh)
   res.setHeader('Cache-Control', 'no-cache');
   // Send a 200 'OK' response
-  res.status(200).json({
-    status: 'ok',
-    author,
-    // Use your own GitHub URL for this...
-    githubUrl: 'https://github.com/knight1972001/fragments',
-    version,
-    // Include the hostname in the response
-    hostname: hostname(),
-  });
+  res.status(200).json(
+    createSuccessResponse({
+      author,
+      githubUrl: 'https://github.com/MizuhoOkimoto/fragments',
+      version,
+      // Include the hostname in the response
+      hostname: hostname(),
+    })
+  );
 });
 
 module.exports = router;
