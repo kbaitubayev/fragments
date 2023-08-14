@@ -1,70 +1,52 @@
-// src/routes/api/get.js
-
-// Use crypto.randomUUID() to create unique IDs, see:
-// https://nodejs.org/api/crypto.html#cryptorandomuuidoptions
-const crypto = require('crypto');
+//PUT
 const { Fragment } = require('../../model/fragment');
-
-const createSuccessResponse = require('../../response').createSuccessResponse;
-const createErrorResponse = require('../../response').createErrorResponse;
-
-const generateUUID = () => {
-  return crypto.randomUUID().toString('hex');
-};
+const logger = require('../../logger');
+const { createSuccessResponse, createErrorResponse } = require('../../response');
+const apiURL = process.env.API_URL;
 
 module.exports = async (req, res) => {
-  const id = req.params.id;
-  let user = crypto.createHash('sha256').update(req.user).digest('hex');
-  const idList = await Fragment.byUser(user);
+  logger.debug(req);
+  logger.debug(Buffer.isBuffer(req.body));
+  if (!Buffer.isBuffer(req.body)) {
+    return res.status(415).json(createErrorResponse(415, 'Unsupported Content Type'));
+  }
+  try {
+    logger.info('PUT fragment');
+    logger.debug('THIS IS RESPONSE', res);
+    logger.debug(req.user);
 
-  if (idList.includes(id)) {
-    const fragment = await Fragment.byId(user, id);
-    if (fragment) {
-      if (fragment.mimeType == req.headers['content-type']) {
-        if (Buffer.isBuffer(req.body) && Fragment.isSupportedType(req.headers['content-type'])) {
-          const id = generateUUID();
-          const location = req.protocol + '://' + req.hostname + ':8080/v1' + req.url + '/' + id;
-          res.set({ Location: location });
+    // Make a new Fragment based on the id parameter
+    //const frag = new Fragment(await Fragment.byId(req.headers.ownerid, req.params.id));
+    const frag = new Fragment(await Fragment.byId(req.user, req.params.id));
+    //frag.type = req.get('Content-Type');
+    logger.debug(frag);
+    logger.debug(req);
+    await frag.setData(req.body);
+    await frag.save();
 
-          await fragment.setData(req.body);
+    // FB: This is not necessary, since you already have `frag` from creating it a few lines above
+    //const savedFragment = await Fragment.byId(req.user, frag.id);
 
-          createSuccessResponse(
-            res.status(200).json({
-              status: 'ok',
-              fragments: fragment,
-            })
-          );
-        } else {
-          createErrorResponse(
-            res.status(415).json({
-              status: 'error',
-              message: 'Invalid file type or body empty',
-            })
-          );
-        }
-      } else {
-        createErrorResponse(
-          res.status(400).json({
-            status: 'error',
-            message: 'Type not match with old type',
-          })
-        );
-      }
-    } else {
-      createErrorResponse(
-        res.status(415).json({
-          status: 'error',
-          message: 'fragment empty...',
-        })
-      );
-    }
-  } else {
-    const error = 'Id is not exist by user ' + user + '.';
-    createErrorResponse(
-      res.status(415).json({
-        code: 415,
-        message: error,
+    logger.debug({ frag }, 'Fragment is updated');
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Location
+    // https://www.itra.co.jp/webmedia/http-header.html
+
+    // FB from A2: The code below is wrong - I have to fix the post unit test!
+    // Name of the test: returns sucess response with correct fragments content-type
+    //res.setHeader('Content-Type', frag.type);
+    res.setHeader('Location', apiURL + `/v1/fragments/` + frag.id);
+
+    return res.status(201).json(
+      createSuccessResponse({
+        fragment: frag,
+        // FB from A2: Remove these, they are wrong(2 lines below this)
+        //Location: apiURL + `/v1/fragments/` + frag.id,
+        //'Content-Length': frag.size,
       })
     );
+  } catch (error) {
+    logger.error({ error }, `Unable to upate fragment`);
+    //console.log('Unable to save fragment');
+    res.status(400).json(createErrorResponse(400, 'Unable to update fragment'));
   }
 };
