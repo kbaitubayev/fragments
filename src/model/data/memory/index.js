@@ -14,10 +14,9 @@ function readFragment(ownerId, id) {
   return metadata.get(ownerId, id);
 }
 
-// Write a fragment's data buffer to memory db. Returns a Promise
-function writeFragmentData(ownerId, id, buffer) {
-  console.log('WRITE IN OFFLINE');
-  return data.put(ownerId, id, buffer);
+// Write a fragment's data to memory db. Returns a Promise
+function writeFragmentData(ownerId, id, value) {
+  return data.put(ownerId, id, value);
 }
 
 // Read a fragment's data from memory db. Returns a Promise

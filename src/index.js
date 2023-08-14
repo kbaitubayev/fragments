@@ -1,7 +1,7 @@
-// src/index.js
+//49. We'll change the default entry point of our server, from src/server.js to use a new file: src/index.js.
+//In this file, we'll begin by loading environment variables from an .env file as the first thing we do.
 
 // Read environment variables from an .env file (if present)
-// NOTE: we only need to do this once in our app's main entry point.
 require('dotenv').config();
 
 // We want to log any crash cases so we can debug later from logs.
