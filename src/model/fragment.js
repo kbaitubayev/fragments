@@ -196,26 +196,28 @@ class Fragment {
   }
 
   static async convertFragment(data, ext) {
-    if (ext === '.png' || ext === '.jpeg' || ext === '.jpg') {
-      //logger.info({ ext }, 'THIS IS IMAGE');
-      //logger.info({ data }, 'buffer inside image');
+    let newData = data;
+    switch (ext) {
+      case 'text/plain':
+        return data.toString();
+      case 'text/html':
+        if (this.type === 'text/markdown') {
+          newData = md.render(data.toString());
+          newData = Buffer.from(newData);
+          return newData;
+        }
+        break;
+      case 'image/png':
+        return await sharp(data).png().toBuffer();
+      case 'image/jpeg':
+        return await sharp(data).jpeg().toBuffer();
+      case 'image/gif':
+        return await sharp(data).gif().toBuffer();
+      case 'image/webp':
+        return await sharp(data).webp().toBuffer();
 
-      //Removing the dot from ext ".png" => "png"
-      ext = ext.substring(1);
-      data = await sharp(data).toFormat(ext).toBuffer();
-      return data;
-    }
-
-    if (ext === '.md' || ext === '.html') {
-      logger.info({ ext }, 'IM A TEXT');
-      // Convert the data to string ("data": [35, 32, 104, 49])
-      // markdown-it works ONLY with string
-      let convert = md.render(data.toString('utf-8'));
-      // Convert to buffer again and send back to the get.js function
-      convert = Buffer.from(convert, 'utf-8');
-
-      //logger.info({ convert }, 'TEXT CONVERTED');
-      return convert;
+      default:
+        return data;
     }
   }
 }
